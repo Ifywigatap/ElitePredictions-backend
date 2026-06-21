@@ -1,0 +1,33 @@
+{
+  "name": "elite-predictions-backend",
+  "version": "1.0.0",
+  "description": "Backend API for ElitePredictions",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "lint:oxc": "oxlint src --deny-warnings"
+  },
+  "dependencies": {
+    "@sentry/node": "^8.55.2",
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^8.5.1",
+    "firebase-admin": "^12.1.0",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0",
+    "node-cron": "^4.2.1",
+    "openai": "^6.39.0",
+    "redis": "^4.6.13",
+    "rotating-file-stream": "^3.2.1",
+    "socket.io": "^4.7.5",
+    "winston": "^3.19.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

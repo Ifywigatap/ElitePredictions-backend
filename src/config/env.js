@@ -15,8 +15,9 @@ const isProd = process.env.NODE_ENV === 'production';
 export const env = {
   PORT: process.env.PORT || 5000,
   NODE_ENV: process.env.NODE_ENV || 'production',
-  // In production, the frontend is usually served from the same origin
-  FRONTEND_URL: isProd ? process.env.PRODUCTION_URL : (process.env.FRONTEND_URL || 'https://elitepredicts.vercel.app/'),
+  // Use a single, clear environment variable for the frontend URL.
+  // The production URL should be set in the Render environment variables.
+  FRONTEND_URL: process.env.FRONTEND_URL || 'https://elitepredicts.vercel.app', // Adjust if your local frontend runs on a different port
   
   SENTRY_ENABLED: process.env.SENTRY_ENABLED === 'true',
   // Only enable Redis if explicitly requested and URL is present

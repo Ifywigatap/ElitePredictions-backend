@@ -76,7 +76,13 @@ app.get('/api/health', async (req, res) => {
     // Check Firestore connectivity by trying to read a dummy document
     // Ensure this path exists and is readable, or create a specific health check document
     const db = admin.firestore();
-    await db.collection('healthChecks').doc('apiStatus').get();
+    const healthCheckDoc = await db.collection('healthChecks').doc('apiStatus').get();
+
+    if (!healthCheckDoc.exists) {
+      // This is not a failure, but good to know. The collection/document might not have been created.
+      // The check still passes as it proves we can connect to Firestore.
+      console.warn('Health check document (healthChecks/apiStatus) does not exist in Firestore.');
+    }
 
     res.status(200).json({
       status: 'UP',
@@ -84,7 +90,8 @@ app.get('/api/health', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Health check failed:', error);
+    // This is a critical failure.
+    console.error('Health check failed due to an error with Firestore connectivity:', error);
     res.status(500).json({
       status: 'DOWN',
       error: 'Failed to connect to Firestore or other dependencies.',

@@ -71,7 +71,7 @@ httpServer.listen(PORT, () => {
   }
 
   try {
-    startLiveScoreEmitter();
+    startLiveScoreEmitter(io);
     logger.info('⚽ Live score emitter started');
   } catch (error) {
     logger.error('Failed to start live score emitter', error);

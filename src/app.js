@@ -90,12 +90,24 @@ app.get('/api/health', async (req, res) => {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    // This is a critical failure.
     console.error('Health check failed due to an error with Firestore connectivity:', error);
+
+    // The gRPC status code for NOT_FOUND is 5. This specific error often means that
+    // the Firestore database has not been created in the Firebase project yet.
+    // We can provide a more specific and helpful error message for this common setup issue.
+    if (error.code === 5 || (error.message && error.message.includes('NOT_FOUND'))) {
+      return res.status(500).json({
+        status: 'DOWN',
+        error: 'Firestore database not found.',
+        details: 'The API could not connect to Firestore because the database does not seem to exist for this project. Please go to your Firebase project console, navigate to the "Firestore Database" section, and click "Create database".',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     res.status(500).json({
       status: 'DOWN',
       error: 'Failed to connect to Firestore or other dependencies.',
-      details: error.message,
+      details: error.message || 'An unknown error occurred during the health check.',
       timestamp: new Date().toISOString(),
     });
   }

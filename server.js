@@ -20,7 +20,9 @@ const httpServer = createServer(app);
 
 export const io = new Server(httpServer, {
   cors: {
-    origin: env.FRONTEND_URL,
+    // Allow the frontend URL with or without a trailing slash.
+    // The browser's Origin header never includes a trailing slash.
+    origin: [env.FRONTEND_URL, env.FRONTEND_URL.replace(/\/$/, '')],
     methods: ['GET', 'POST'],
     credentials: true,
   },

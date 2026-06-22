@@ -22,7 +22,13 @@ import admin from 'firebase-admin'; // For Firestore health check
 const app = express();
 
 /* ================= MIDDLEWARE ================= */
-app.use(cors({ origin: env.FRONTEND_URL }));
+// More robust CORS options to handle trailing slashes gracefully.
+// The browser's Origin header never includes a trailing slash.
+const corsOptions = {
+  origin: [env.FRONTEND_URL, env.FRONTEND_URL.replace(/\/$/, '')],
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -73,37 +79,50 @@ app.use('/api/webhooks', webhookRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
-    // Check Firestore connectivity by trying to read a dummy document
-    // Ensure this path exists and is readable, or create a specific health check document
     const db = admin.firestore();
-    const healthCheckDoc = await db.collection('healthChecks').doc('apiStatus').get();
+    const healthCheckRef = db.collection('healthChecks').doc('apiStatus');
 
-    if (!healthCheckDoc.exists) {
-      // This is not a failure, but good to know. The collection/document might not have been created.
-      // The check still passes as it proves we can connect to Firestore.
-      console.warn('Health check document (healthChecks/apiStatus) does not exist in Firestore.');
-    }
+    // Perform a write to confirm connectivity and permissions.
+    // This is more robust than just reading.
+    await healthCheckRef.update({
+      lastChecked: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'healthy'
+    });
 
     res.status(200).json({
       status: 'UP',
-      database: 'Connected to Firestore',
+      database: 'Connected to Firestore (read/write OK)',
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('Health check failed due to an error with Firestore connectivity:', error);
-
-    // The gRPC status code for NOT_FOUND is 5. This specific error often means that
-    // the Firestore database has not been created in the Firebase project yet.
-    // We can provide a more specific and helpful error message for this common setup issue.
-    if (error.code === 5 || (error.message && error.message.includes('NOT_FOUND'))) {
-      return res.status(500).json({
-        status: 'DOWN',
-        error: 'Firestore database not found.',
-        details: 'The API could not connect to Firestore because the database does not seem to exist for this project. Please go to your Firebase project console, navigate to the "Firestore Database" section, and click "Create database".',
-        timestamp: new Date().toISOString(),
-      });
+    // If the document doesn't exist, the update fails with code 5 (NOT_FOUND).
+    // In this "self-healing" check, we attempt to create it.
+    if (error.code === 5) {
+      try {
+        const healthCheckRef = admin.firestore().collection('healthChecks').doc('apiStatus');
+        await healthCheckRef.set({
+          status: 'created_by_health_check',
+          createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        // If creation succeeds, the DB is healthy.
+        return res.status(200).json({
+          status: 'UP',
+          database: 'Connected to Firestore (health check document created)',
+          timestamp: new Date().toISOString(),
+        });
+      } catch (creationError) {
+        console.error('Health check failed: Could not create health check document.', creationError);
+        return res.status(500).json({
+          status: 'DOWN',
+          error: 'Failed to connect to Firestore.',
+          details: creationError.message,
+          timestamp: new Date().toISOString(),
+        });
+      }
     }
 
+    // For any other error, report it as a failure.
+    console.error('Health check failed due to a Firestore connectivity error:', error);
     res.status(500).json({
       status: 'DOWN',
       error: 'Failed to connect to Firestore or other dependencies.',

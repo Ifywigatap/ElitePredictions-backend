@@ -16,13 +16,19 @@ const PORT = process.env.PORT || env.PORT || 5000;
 
 const httpServer = createServer(app);
 
+const allowedOrigins = new Set();
+if (env.FRONTEND_URL) {
+  allowedOrigins.add(env.FRONTEND_URL);
+  allowedOrigins.add(env.FRONTEND_URL.replace(/\/$/, ''));
+}
+
 /* ================= SOCKET.IO ================= */
 
 export const io = new Server(httpServer, {
   cors: {
     // Allow the frontend URL with or without a trailing slash.
     // The browser's Origin header never includes a trailing slash.
-    origin: [env.FRONTEND_URL, env.FRONTEND_URL.replace(/\/$/, '')],
+    origin: Array.from(allowedOrigins),
     methods: ['GET', 'POST'],
     credentials: true,
   },

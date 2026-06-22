@@ -24,8 +24,14 @@ const app = express();
 /* ================= MIDDLEWARE ================= */
 // More robust CORS options to handle trailing slashes gracefully.
 // The browser's Origin header never includes a trailing slash.
+const allowedOrigins = new Set();
+if (env.FRONTEND_URL) {
+  allowedOrigins.add(env.FRONTEND_URL);
+  allowedOrigins.add(env.FRONTEND_URL.replace(/\/$/, ''));
+}
+
 const corsOptions = {
-  origin: [env.FRONTEND_URL, env.FRONTEND_URL.replace(/\/$/, '')],
+  origin: Array.from(allowedOrigins),
   credentials: true,
 };
 app.use(cors(corsOptions));

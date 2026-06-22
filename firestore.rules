@@ -1,0 +1,82 @@
+//
+// Elite Predictions - Firestore Security Rules
+//
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================================================================
+    // Default Rule: DENY ALL
+    // For maximum security, we deny all read/write access by default and
+    // then grant access specifically for each collection.
+    // =====================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =====================================================================
+    // Users Collection (/users/{userId})
+    // =====================================================================
+    match /users/{userId} {
+      // A user can read their own document.
+      allow read: if request.auth.uid == userId;
+
+      // A new user can create their own user document when they sign up.
+      // We ensure the document ID matches their authenticated UID.
+      allow create: if request.auth.uid == userId;
+
+      // A user can update their own document.
+      // For added security, you can restrict which fields are updatable.
+      // Ex: `if request.auth.uid == userId && request.resource.data.keys().hasOnly(['displayName', 'photoURL']);`
+      allow update: if request.auth.uid == userId;
+
+      // Disallow clients from deleting user documents. This should be a backend operation.
+      allow delete: if false;
+    }
+
+    // =====================================================================
+    // Predictions Collection (/predictions/{predictionId})
+    // =====================================================================
+    match /predictions/{predictionId} {
+      // Any authenticated user can read predictions.
+      allow read: if request.auth != null;
+
+      // All writes (create, update, delete) to predictions must be done
+      // by the backend using the Admin SDK.
+      allow write: if false;
+    }
+
+    // =====================================================================
+    // VIP & Payment Subcollections
+    // These are nested under the user who owns them.
+    // =====================================================================
+
+    // VIP Status: /users/{userId}/vip/status
+    // This is sensitive. The backend should manage this via the Admin SDK.
+    match /users/{userId}/vip/{docId} {
+        // The user can read their own VIP status.
+        allow read: if request.auth.uid == userId;
+        // All writes must go through the backend.
+        allow write: if false;
+    }
+
+    // Payment History: /users/{userId}/payments/{paymentId}
+    // This is highly sensitive. The backend MUST manage this.
+    match /users/{userId}/payments/{paymentId} {
+        // A user can read their own payment history.
+        allow read: if request.auth.uid == userId;
+        // All writes must go through the backend.
+        allow write: if false;
+    }
+
+    // =====================================================================
+    // Health Check Collection (/healthChecks/{docId})
+    // =====================================================================
+    // This collection is only used by the backend for health checks.
+    // The Admin SDK bypasses these rules, so no client access is needed.
+    match /healthChecks/{docId} {
+      allow read, write: if false;
+    }
+  }
+}
